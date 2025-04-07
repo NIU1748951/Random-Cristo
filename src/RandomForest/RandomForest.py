@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Any, Tuple, List, Optional
+from collections import Counter
 
 from .DecisionTree import Node, LeafNode, DecisionNode
 from .Dataset import Dataset
@@ -13,18 +14,32 @@ class RandomForestClassifier():
         self._num_trees = num_trees
         self._num_random_features = num_random_features
         self._criterion = criterion
-        self._trees: list[Node] = []
+        self._trees: List[Node] = []
 
     def fit(self, X, y):
         dataset = Dataset(X, y)
         self._build_trees(dataset)
 
-    def predict(self, X):
-        raise NotImplementedError("Method 'predict' unimplemented!")
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        if len(self._trees) == 0:
+            raise ValueError("Model must be trained before predicting!")
+
+        n_samples = X.shape[0]
+        predictions = np.empty(n_samples, dtype=object)
+        
+        for i in range(n_samples):
+            votes = []
+            for tree in self._trees:
+                votes.append(tree.predict(X[i]))
+            
+            most_common = Counter(votes).most_common(1)[0][0]
+            predictions[i] = most_common
+
+        return predictions
 
     def _build_trees(self, dataset: Dataset):
         self._trees = []
-        for i in range(self._num_trees):
+        for _ in range(self._num_trees):
             # Create each tree
             subset: Any = dataset.random_sample(self._ratio_samples)
             tree = self._make_node(subset, depth=1) # This will be the root of the tree
@@ -50,8 +65,10 @@ class RandomForestClassifier():
                                        replace=False)
 
         best_feature_index, best_threshold, best_split = self._best_split(idx_features, dataset)
+        if best_split is None:
+            return self._make_leaf(dataset)
+
         left_dataset, right_dataset = best_split
-        
         if left_dataset.num_samples == 0 or right_dataset.num_samples == 0:
             return self._make_leaf(dataset)
         else:
@@ -74,11 +91,28 @@ class RandomForestClassifier():
                             idx, val, cost, [left_dataset, right_dataset]
         return best_feature_index, best_threshold, best_split
 
-    def _CART_cost(self, left_dataset: Dataset, right_dataset: Dataset):
+    def _CART_cost(self, left_dataset: Dataset, right_dataset: Dataset) -> float:
         # Compute J(k, v) equation
-        cost = 0
-        return cost
+        total_samples = left_dataset.num_samples + right_dataset.num_samples
 
-    def _gini(self):
+        left_weight = left_dataset.num_samples / total_samples
+        right_weight = right_dataset.num_samples / total_samples
+
+        left_gini = self._gini_impurity(left_dataset.y)
+        right_gini = self._gini_impurity(right_dataset.y)
+        
+        return left_weight * left_gini + right_weight * right_gini
+
+    def _gini_impurity(self, y: np.ndarray) -> float:
         # We should use Strategy pattern!!!
-        pass
+        
+        if len(y) == 0:
+            return 0
+
+        counter = Counter(y)
+        proportions = [count/len(y) for count in counter.values()]
+
+        # G(D) = 1 - Σ p_c²
+        return 1 - sum(p**2 for p in proportions)
+
+

@@ -3,15 +3,30 @@ import numpy as np
 import sklearn.datasets
 
 import RandomForest as model
+import utils 
+
+logger = utils.get_logger(__name__)
+
+def log_data(X, y):
+    data = [(xi, yi) for xi, yi in zip(X, y)]
+    num_samples, num_features = X.shape[0], X.shape[1]
+    logger.info(f"Number of samples: {num_samples}")
+    logger.info(f"Number of features: {num_features}")
+    for i, d in enumerate(data):
+        logger.info(f"Sample {i}:{d[0]} - {d[1]}")
 
 def main():
     iris: Any = sklearn.datasets.load_iris()
     X, y = iris.data, iris.target
+    # log_data(X, y)
+
     ratio_train, ratio_test = 0.7, 0.3  
     # 70% train, 30% test
+
     num_samples, num_features = X.shape
     # num_samples is the number of rows
     # num_features is the number of columns
+
     idx = np.random.permutation(range(num_samples))
     # returns a list with a randomized series of indexs
 
@@ -41,18 +56,16 @@ def main():
     num_samples_test = len(y_test)
     num_correct_predictions = np.sum(ypred == y_test)
     accuracy = num_correct_predictions / float(num_samples_test)
-    print("Accuracy: {} %".format(100 * np.round(accuracy, decimals=2)))
 
-
-def test():
-    left = model.LeafNode(0)
-    right = model.LeafNode(1)
-
-    root = DecisionNode(feature_index=0, )
+    logger.info("Accuracy: {} %".format(100 * np.round(accuracy, decimals=2)))
+    if accuracy < 50.00:
+        logger.warning("Accuracy is too low!")
 
 if __name__ == "__main__":
     try:
         main()
     except NotImplementedError as e:
-        print("Unimplemented error: " + str(e))
+        logger.error("Unimplemented error: " + str(e))
+    except ValueError as e:
+        logger.error("Value error occured: ", str(e))
 
