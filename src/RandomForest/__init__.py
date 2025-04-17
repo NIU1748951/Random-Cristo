@@ -1,5 +1,5 @@
-from .DecisionTree import Node, DecisionNode, LeafNode
+from .DecisionTree import Node, Leaf, Parent
 from .RandomForest import RandomForestClassifier
 from .Dataset import Dataset
 
-__all__ = ["RandomForestClassifier, Node, DecisionNode, LeafNode, Dataset"]
+__all__ = ["RandomForestClassifier", "Node", "Leaf", "Parent", "Dataset"]

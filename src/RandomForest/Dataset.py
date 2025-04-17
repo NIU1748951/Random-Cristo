@@ -1,66 +1,40 @@
+from dataclasses import dataclass
+from typing import Tuple
+
 import numpy as np
-from typing import Tuple, Optional
-from collections import Counter
+from numpy.typing import NDArray
 
-class Dataset():
-    __slots__ = ["X", "y"]
-    def __init__(self, X: np.ndarray, y: np.ndarray):
-        self.X = X
-        self.y = y
+import utils
+
+logger = utils.get_logger(__name__)
+
+@dataclass(frozen=True)
+class Dataset:
+    __slots__ = ["features", "labels"]
+    features: NDArray[np.float64]
+    labels: NDArray[np.int16]
+    
+    @property
+    def n_features(self) -> int:
+        return self.features.shape[1]
+    
+    @property
+    def n_samples(self) -> int:
+        return self.features.shape[0]
 
     @property
-    def num_samples(self):
-        return self.X.shape[0]
+    def most_freq_label(self) -> np.intp:
+        return np.argmax(np.bincount(self.labels))
 
-    @property
-    def num_features(self):
-        return self.X.shape[1]
-
-    def most_frequent_label(self):
-        return Counter(self.y).most_common(1)[0][0]
-
-    def random_sample(self, ratio_samples: float):
-        if not (0 < ratio_samples <= 1):
-            raise ValueError("ratio_samples must be between 0 and 1")
-        
-        samples_to_take = int(self.num_samples * ratio_samples)
-
-        if samples_to_take == 0:
-            return Dataset(np.empty((0, self.num_features)), np.empty(0))
-
-        random_indices = np.random.choice(
-                range(self.num_samples),
-                size=samples_to_take,
-                replace=False
-        )
-        
-        return Dataset(
-            X=self.X[random_indices],
-            y=self.y[random_indices]
-        )
-
-
-    def split(self, idx: int, value: int | float) -> Tuple[Optional['Dataset'], Optional['Dataset']]:
-        if not (0 <= idx <= self.num_features):
-            raise ValueError(f"idx must be between 0 and {self.num_features - 1}. Current value: {idx}")
-
-        left_indices = np.where(self.X[:, idx] <= value)[0]
-        right_indices = np.where(self.X[:, idx] <= value)[0]
-
-        left_dataset = None
-        right_dataset = None
-
-        if len(left_indices) > 0:
-            left_dataset = Dataset(
-                X=self.X[left_indices],
-                y=self.y[left_indices]
-            )
-
-        if len(right_indices) > 0:
-            right_dataset = Dataset(
-                X=self.X[right_indices],
-                y=self.y[right_indices]
-            )
-
-        return left_dataset, right_dataset
+    def random_sampling(self, ratio: float, replace: bool = True) -> "Dataset":
+        assert 0.0 < ratio <= 1.0
+        size = int(self.n_samples * ratio)
+        assert size > 0.0
+        idx = np.random.choice(range(self.n_samples), size, replace)
+        return Dataset(self.features[idx], self.labels[idx])
+    
+    def split(self, index_feature: int, threshold: float) -> Tuple["Dataset", "Dataset"]:
+        idx_left = np.ndarray = self.features[:, index_feature] < threshold
+        idx_right = np.ndarray = self.features[:, index_feature] >= threshold
+        return Dataset(self.features[idx_left], self.labels[idx_left]), Dataset(self.features[idx_right], self.labels[idx_right])
 

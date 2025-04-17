@@ -1,29 +1,33 @@
+from dataclasses import dataclass
+from typing import override
 from abc import ABC, abstractmethod
-from .Dataset import Dataset
+from numpy.typing import NDArray
 
 class Node(ABC):
     @abstractmethod
-    def predict(self, X):
+    def predict(self, features: NDArray):
         pass
+@dataclass
 
-# Represents the final prediction
-class LeafNode(Node):
-    def __init__(self, value):
-        self._value = value
+class Leaf(Node):
+    __slots__ = ["label"] 
+    label: int
 
-    def predict(self, X):
-        return self._value
+    @override
+    def predict(self, _: NDArray):
+        return self.label
 
-class DecisionNode(Node):
-    def __init__(self, feature_index, threshold, left: Node, right: Node):
-        self._feature_index = feature_index
-        self._threshold = threshold
-        self._left = left       # meets the condition
-        self._right = right     # doesn't meet the condition
+@dataclass
+class Parent(Node):
+    __slots__ = ["feature_index", "threshold", "left_child", "right_child"] 
+    feature_index: int
+    threshold: float
+    left_child: Node
+    right_child: Node
 
-    def predict(self, X):
-        if X[self._feature_index] <= self._threshold:
-            return self._left.predict(X)
+    @override
+    def predict(self, features: NDArray):
+        if features[self.feature_index] <= self.threshold:
+            return self.left_child.predict(features)
         else:
-            return self._right.predict(X)
-
+            return self.right_child.predict(features)
