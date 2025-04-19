@@ -39,9 +39,9 @@ def main():
 
     # Hyperparameters
     max_depth = 10 
-    min_size_split = 5  # if less, do not split the node
-    ratio_samples = 0.7  # sampling with replacement
-    num_trees = 10
+    min_size_split = 3  # if less, do not split the node
+    ratio_samples = 0.8  # sampling with replacement
+    num_trees = 100
     num_random_features = int(np.sqrt(num_features))
                         # number of features to consider at each node
                         # when looking for the best split
@@ -58,7 +58,7 @@ def main():
     accuracy = num_correct_predictions / float(num_samples_test)
 
     logger.info("Accuracy: {} %".format(100 * np.round(accuracy, decimals=2)))
-    if accuracy < 50.00:
+    if accuracy < 0.5:
         logger.warning("Accuracy is too low!")
 
 if __name__ == "__main__":

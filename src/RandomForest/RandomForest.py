@@ -4,6 +4,9 @@ from numpy.typing import NDArray
 
 from .DecisionTree import Leaf, Parent
 from .Dataset import Dataset
+from utils.LoggerConfig import get_logger
+
+logger =  get_logger(__name__)
 
 class RandomForestClassifier:
     def __init__(self, max_depth: int, min_size_split: int, ratio_samples: float,
@@ -14,6 +17,13 @@ class RandomForestClassifier:
         self._num_trees = num_trees
         self._num_random_features = num_random_features
         self._criterion = criterion
+        logger.info(f"""Initializing RandomForestClassifier.
+- Maximum depth: {max_depth}
+- Minimum size split: {min_size_split}
+- Ratio samples: {ratio_samples}
+- Number of trees: {num_trees}
+- Number of random features: {num_random_features}
+- Criterion selected: {criterion}""")
 
     def predict(self, features: NDArray):
         if len(self._trees) == 0:
@@ -33,16 +43,18 @@ class RandomForestClassifier:
         return predictions
     
     def fit(self, features: NDArray, labels: NDArray):
+        logger.info("Starting fitting process...")
         dataset = Dataset(features, labels)
         self._make_decision_trees(dataset)
 
     def _make_decision_trees(self, dataset: Dataset):
         self._trees = []
-        for _ in range(self._num_trees):
+        for i in range(self._num_trees):
             # bootstrap
             subset = dataset.random_sampling(self._ratio_samples, True)
             tree = self._make_node(subset, 1) # The root
             self._trees.append(tree)
+            logger.debug(f"Appended tree #{i + 1}")
 
     def _make_node(self, dataset: Dataset, depth: int):
         if depth >= self._max_depth \
