@@ -45,7 +45,7 @@ def main():
     num_random_features = int(np.sqrt(num_features))
                         # number of features to consider at each node
                         # when looking for the best split
-    criterion = "gini"
+    criterion = model.Strategy.ImpurityStrategyEntropy()
 
     rf = model.RandomForestClassifier(max_depth, min_size_split, ratio_samples,
                                       num_trees, num_random_features, criterion)

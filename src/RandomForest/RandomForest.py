@@ -4,26 +4,58 @@ from numpy.typing import NDArray
 
 from .DecisionTree import Leaf, Parent
 from .Dataset import Dataset
+from .Strategy import*
 from utils.LoggerConfig import get_logger
 
 logger =  get_logger(__name__)
 
 class RandomForestClassifier:
     def __init__(self, max_depth: int, min_size_split: int, ratio_samples: float,
-                 num_trees: int, num_random_features: int, criterion: str):
+                 num_trees: int, num_random_features: int, criterion: str | ImpurityStrategy = "gini"):
         self._max_depth = max_depth
         self._min_size_split = min_size_split
         self._ratio_samples = ratio_samples
         self._num_trees = num_trees
         self._num_random_features = num_random_features
-        self._criterion = criterion
+
+        if isinstance(criterion, str):
+            self._impurity_strat = self._match_criterion(criterion.lower())
+        elif isinstance(criterion, ImpurityStrategy):
+            self._impurity_strat = criterion
+
+        if self._impurity_strat == None:
+            logger.warning(f"Impurity algorithm '{criterion}' is unkown. Selecting default algorithm 'GINI'")
+            self._impurity_strat = ImpurityStrategyGini()
+
         logger.info(f"""Initializing RandomForestClassifier.
 - Maximum depth: {max_depth}
 - Minimum size split: {min_size_split}
 - Ratio samples: {ratio_samples}
 - Number of trees: {num_trees}
 - Number of random features: {num_random_features}
-- Criterion selected: {criterion}""")
+- Impurity measure algorithm: {self._impurity_strat}""")
+
+    def set_impurity_strategy(self, strategy: ImpurityStrategy | str):
+        if isinstance(strategy, ImpurityStrategy):
+            self._impurity_strat = strategy
+            logger.info(f"Impurity method changed to '{strategy}'")
+        else:
+            new_strategy = self._match_criterion(strategy)
+            if new_strategy == None:
+                logger.warning(f"Impurity algorithm '{new_strategy}' is unkown. No changes were made")
+            else:
+                self._impurity_strat = new_strategy
+                logger.info(f"Impurity method changed to '{strategy}'")
+
+    @staticmethod
+    def _match_criterion(criterion: str) -> ImpurityStrategy | None:
+        match criterion:
+            case "gini":
+                return ImpurityStrategyGini()
+            case "entropy":
+                return ImpurityStrategyEntropy()
+            case _:
+                return None
 
     def predict(self, features: NDArray):
         if len(self._trees) == 0:
@@ -108,21 +140,10 @@ class RandomForestClassifier:
         left_weight = left_dataset.n_samples / total_samples
         right_weight = right_dataset.n_samples / total_samples
 
-        left_gini = self._gini_impurity(left_dataset.labels)
-        right_gini = self._gini_impurity(right_dataset.labels)
+        assert  self._impurity_strat != None # It should never be equal to None!
+        left_gini = self._impurity_strat.execute(left_dataset.labels)
+        right_gini = self._impurity_strat.execute(right_dataset.labels)
         
         return left_weight * left_gini + right_weight * right_gini
-
-    def _gini_impurity(self, labels: NDArray) -> float:
-        # We should use Strategy pattern!!!
-        
-        if len(labels) == 0:
-            return 0
-
-        counter = Counter(labels)
-        proportions = [count/len(labels) for count in counter.values()]
-
-        # G(D) = 1 - Σ p_c²
-        return 1 - sum(p**2 for p in proportions)
 
 
