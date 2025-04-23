@@ -1,4 +1,5 @@
 from collections import Counter
+
 import numpy as np
 from numpy.typing import NDArray
 
