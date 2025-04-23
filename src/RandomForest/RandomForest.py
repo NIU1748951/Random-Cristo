@@ -1,4 +1,6 @@
 from collections import Counter
+from multiprocessing import Pool
+import os
 
 import numpy as np
 from numpy.typing import NDArray
@@ -12,12 +14,21 @@ logger =  get_logger(__name__)
 
 class RandomForestClassifier:
     def __init__(self, max_depth: int, min_size_split: int, ratio_samples: float,
-                 num_trees: int, num_random_features: int, criterion: str | ImpurityStrategy = "gini"):
+                 num_trees: int, num_random_features: int, criterion: str | ImpurityStrategy = "gini", 
+                 *, n_jobs: int | None = None):
+        """
+        N_jobs follows same convention as scikit-learn:
+            - n_jobs = None   -> Same behaviour as n_jobs = 1 (sequential)
+            - n_jobs = 1      -> Sequential
+            - n_jobs > 1      -> Use this number of threads
+            - n_jobs = -1     -> Use all available cores
+        """
         self._max_depth = max_depth
         self._min_size_split = min_size_split
         self._ratio_samples = ratio_samples
         self._num_trees = num_trees
         self._num_random_features = num_random_features
+        self._n_jobs = n_jobs
 
         if isinstance(criterion, str):
             self._impurity_strat = self._match_criterion(criterion.lower())
@@ -74,13 +85,26 @@ class RandomForestClassifier:
             predictions[i] = most_common
 
         return predictions
-    
+
     def fit(self, features: NDArray, labels: NDArray):
         logger.info("Starting fitting process...")
         dataset = Dataset(features, labels)
         self._make_decision_trees(dataset)
 
     def _make_decision_trees(self, dataset: Dataset):
+        if self._n_jobs == -1:
+            num_workers = os.cpu_count()
+        else:
+            num_workers = self._n_jobs
+
+        if num_workers is None or num_workers <= 1:
+            self._make_decision_trees_sequential(dataset)
+        else:
+            self._make_decision_trees_parallel(dataset, num_workers)
+
+
+    def _make_decision_trees_sequential(self, dataset: Dataset):
+        logger.info("Creating decision trees in 'sequential' mode")
         self._trees = []
         for i in range(self._num_trees):
             # bootstrap
@@ -88,6 +112,39 @@ class RandomForestClassifier:
             tree = self._make_node(subset, 1) # The root
             self._trees.append(tree)
             logger.debug(f"Appended tree #{i + 1}")
+
+    def _fit_target(self, dataset: Dataset):
+        subset = dataset.random_sampling(self._ratio_samples, True)
+        tree = self._make_node(subset, 1)
+        return tree
+
+    @staticmethod
+    def _initial_worker(rf, dataset):
+        """
+        Sets a helping global variable containing (self, ) a.k.a the Random Forest mode
+        to use in the actual workers
+        """
+        global _workers_rf, _workers_dataset
+        _workers_rf = rf
+        _workers_dataset = dataset
+
+    @staticmethod
+    def _worker(_):
+        """
+        Pickable function to be passed to `pool.map`
+        The argument '_' needs to be defined but is actually unused
+        """
+        return _workers_rf._fit_target(_workers_dataset)
+    
+    def _make_decision_trees_parallel(self, dataset: Dataset, n_workers: int):
+        logger.info(f"Creating decision trees in 'parallel' mode with {n_workers} workers")
+        tasks = [None] * self._num_trees
+
+        with Pool(processes=n_workers, initializer=self._initial_worker, initargs=(self, dataset)) as pool:
+            self._trees = pool.map(self._worker, tasks)
+
+
+        logger.info("Finished fitting process")
 
     def _make_node(self, dataset: Dataset, depth: int):
         if depth >= self._max_depth \

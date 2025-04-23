@@ -41,14 +41,15 @@ def main():
     max_depth = 10 
     min_size_split = 3  # if less, do not split the node
     ratio_samples = 0.8  # sampling with replacement
-    num_trees = 100
+    num_trees = 1000
     num_random_features = int(np.sqrt(num_features))
                         # number of features to consider at each node
                         # when looking for the best split
-    criterion = model.Strategy.ImpurityStrategyEntropy()
+    criterion = model.Strategy.ImpurityStrategyGini()
 
     rf = model.RandomForestClassifier(max_depth, min_size_split, ratio_samples,
-                                      num_trees, num_random_features, criterion)
+                                      num_trees, num_random_features, criterion,
+                                      n_jobs=-1)
 
     rf.fit(X_train, y_train)
     ypred = rf.predict(X_test)
