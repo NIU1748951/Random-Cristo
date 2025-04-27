@@ -7,8 +7,8 @@ class Node(ABC):
     @abstractmethod
     def predict(self, features: NDArray):
         pass
-@dataclass
 
+@dataclass
 class Leaf(Node):
     __slots__ = ["label"] 
     label: int

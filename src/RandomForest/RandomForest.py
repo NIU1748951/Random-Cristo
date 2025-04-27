@@ -10,7 +10,7 @@ from .Dataset import Dataset
 from .Strategy import*
 from utils.LoggerConfig import get_logger
 
-logger =  get_logger(__name__)
+logger = get_logger(__name__)
 
 class RandomForestClassifier:
     def __init__(self, max_depth: int, min_size_split: int, ratio_samples: float,
@@ -69,7 +69,14 @@ class RandomForestClassifier:
             case _:
                 return None
 
-    def predict(self, features: NDArray):
+    def predict(self, X: NDArray | Dataset):
+        if isinstance(X, Dataset):
+            features = X.features
+        elif isinstance(X, np.ndarray):
+            features = X
+        else:
+            raise ValueError("Invalid arguments for predicting")
+
         if len(self._trees) == 0:
             raise ValueError("Model must be trained before predicting!")
 
@@ -86,7 +93,16 @@ class RandomForestClassifier:
 
         return predictions
 
-    def fit(self, features: NDArray, labels: NDArray):
+    def fit(self, X: NDArray | Dataset, y: NDArray | None = None):
+        if isinstance(X, Dataset):
+            features = X.features
+            labels = X.labels
+        elif isinstance(X, np.ndarray) and isinstance(y, np.ndarray):
+            features = X
+            labels = y
+        else:
+            raise ValueError("Invalid arguments for training")
+
         logger.info("Starting fitting process...")
         dataset = Dataset(features, labels)
         self._make_decision_trees(dataset)
@@ -203,5 +219,4 @@ class RandomForestClassifier:
         right_gini = self._impurity_strat.execute(right_dataset.labels)
         
         return left_weight * left_gini + right_weight * right_gini
-
 
