@@ -1,0 +1,86 @@
+@startuml RandomForest
+' Classes
+abstract class Node
+{
+    {abstract} +predict(features: NDArray)
+}
+
+class Leaf
+{
+    -label: int
+    +predict(features: NDArray): int
+}
+
+class Parent{
+    -feature_index: int
+    -threshold: float
+    -left_child: Node
+    -right_child: Node
+    +predict(features: NDArray): int
+}
+
+class Dataset{
+    -features: NDArray[Any]
+    -labels: NDArray[Any]
+    +from_file(filename: str, separator: str): Dataset
+    +n_features: int
+    +n_samples: int
+    +most_freq_label: np.intp
+    +train_test_split(test_size: float, shuffle: bool): Tuple[Dataset, Dataset]
+    +random_sampling(ratio: float, replace: bool): Dataset
+    +split(index_feature: int, threshold: float): Tuple[Dataset, Dataset]
+}
+
+class RandomForestClassifier{
+    -_max_depth: int
+    -_min_size_split: int
+    -_ratio_samples: float
+    -_num_trees: int
+    -_num_random_features: int
+    -_impurity_strat: ImpurityStrategy
+    -_n_jobs: int | None
+    -_trees: list[Node]
+    +predict(X: NDArray | Dataset): NDArray
+    +fit(X: NDArray | Dataset, y: NDArray | None)
+    -_make_decision_trees(dataset: Dataset)
+    -_make_node(dataset: Dataset, depth: int): Node
+    -_best_split(idx_features: NDArray, dataset: Dataset)
+    -_CART_cost(left: Dataset, right: Dataset): float
+}
+
+abstract class ImpurityStrategy{
+    +proportionate(labels: NDArray): list[float]
+    {abstract} +execute(labels: NDArray): float
+}
+
+class ImpurityStrategyGini{
+    +execute(labels: NDArray): float
+    +__str__(): str
+}
+
+class ImpurityStrategyEntropy{
+    +execute(labels: NDArray): float
+    +__str__(): str
+}
+
+' Relationships
+Node <|-- Leaf
+Node <|-- Parent
+
+Parent o-- Node : left_child
+Parent o-- Node : right_child
+
+RandomForestClassifier o-- Node : _trees
+RandomForestClassifier o-- ImpurityStrategy : _impurity_strat
+
+ImpurityStrategy <|-- ImpurityStrategyGini
+ImpurityStrategy <|-- ImpurityStrategyEntropy
+
+Dataset <.. RandomForestClassifier : uses in fit() and predict()
+
+' Notes
+note top of ImpurityStrategy : Strategy Pattern\nThis RandomForest uses different impurity algorithms
+note top of RandomForestClassifier : - Uses multiprocessing for parallel tree building\n- Aggregates multiple Decision Trees (composition)
+note top of Parent : Composition with Node children
+note top of Dataset : Handles data loading, splitting,\nand sampling
+@enduml
