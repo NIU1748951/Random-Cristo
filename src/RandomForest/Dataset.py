@@ -1,4 +1,5 @@
 #int 64
+from math import floor
 from dataclasses import dataclass
 from typing import Any, Tuple
 
@@ -44,7 +45,6 @@ class Dataset:
     features: NDArray[Any]
     labels: NDArray[Any]
     
-
     @classmethod
     def from_file(cls, filename: str, separator: str = ','):
         features = []
@@ -76,7 +76,8 @@ class Dataset:
         labels_arr = _categorize(labels)
 
         logger.info(f"Created dataset with {n_fields} fields and {features_arr.shape[0]} samples")
-        logger.info(labels)
+        logger.info(f"Features:\n{features_arr}")
+        logger.info(f"Labels:\n{labels_arr}")
         return cls(features_arr, labels_arr)
 
     @property
@@ -111,7 +112,7 @@ class Dataset:
 
     def random_sampling(self, ratio: float, replace: bool = True) -> "Dataset":
         assert 0.0 < ratio <= 1.0  # It's a percentage!
-        size = int(self.n_samples * ratio)
+        size = floor(self.n_samples * ratio)
         assert size > 0.0
         idx = np.random.choice(range(self.n_samples), size, replace)
         return Dataset(self.features[idx], self.labels[idx])
