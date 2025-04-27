@@ -67,8 +67,8 @@ class ImpurityStrategyEntropy{
 Node <|-- Leaf
 Node <|-- Parent
 
-Parent o-- Node : left_child
-Parent o-- Node : right_child
+Parent *-- Node : left_child
+Parent o*-- Node : right_child
 
 RandomForestClassifier o-- Node : _trees
 RandomForestClassifier o-- ImpurityStrategy : _impurity_strat
