@@ -1,3 +1,5 @@
+from typing import Any
+
 import numpy as np
 import sklearn.datasets
 
@@ -19,6 +21,8 @@ def main():
     #X, y = iris.data, iris.target
     sonar = model.Dataset.from_file("data/Sonar/sonar.all-data.csv")
     X, y = sonar.features, sonar.labels
+    logger.info(X)
+    logger.info(y)
     # log_data(X, y)
 
     ratio_train, ratio_test = 0.75, 0.25  
@@ -39,14 +43,14 @@ def main():
     X_test, y_test = X[idx_test], y[idx_test]
 
     # Hyperparameters
-    max_depth = 10 
-    min_size_split = 4  # if less, do not split the node
-    ratio_samples = 0.9  # sampling with replacement
+    max_depth = 15 
+    min_size_split = 3  # if less, do not split the node
+    ratio_samples = 0.8 # sampling with replacement
     num_trees = 1000
     num_random_features = int(np.sqrt(num_features))
                         # number of features to consider at each node
                         # when looking for the best split
-    criterion = model.Strategy.ImpurityStrategyEntropy()
+    criterion = model.Strategy.ImpurityStrategyGini()
 
     rf = model.RandomForestClassifier(max_depth, min_size_split, ratio_samples,
                                       num_trees, num_random_features, criterion,

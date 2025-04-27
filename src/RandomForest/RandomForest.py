@@ -132,6 +132,7 @@ class RandomForestClassifier:
     def _fit_target(self, dataset: Dataset):
         subset = dataset.random_sampling(self._ratio_samples, True)
         tree = self._make_node(subset, 1)
+        logger.debug(f"Created tree {os.getpid()}")
         return tree
 
     @staticmethod
@@ -176,7 +177,7 @@ class RandomForestClassifier:
         return Leaf(int(dataset.most_freq_label))
 
     def _make_parent_or_leaf(self, dataset: Dataset, depth: int):
-        idx_features = np.random.choice(range(dataset.n_features), self._num_random_features, replace=False)
+        idx_features = np.random.choice(range(dataset.n_features), self._num_random_features, replace=True)
         best_feature_idx, best_threshold, _, best_split = self._best_split(idx_features, dataset)
 
         left_dataset, right_dataset = best_split

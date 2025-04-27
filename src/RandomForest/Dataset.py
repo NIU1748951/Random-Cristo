@@ -1,6 +1,6 @@
 #int 64
 from dataclasses import dataclass
-from typing import Any, Tuple, List
+from typing import Any, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -21,7 +21,7 @@ def _cast_features(col) -> np.ndarray:
         except:
             return np.array(col, dtype=str)
 
-def _cast_labels(labels):
+def _categorize(labels):
     """
     Forces each label to be an integer representing its class
     """
@@ -73,7 +73,7 @@ class Dataset:
             for j, col in enumerate(casted_cols):
                 features_arr[:, j] = col
 
-        labels_arr = _cast_labels(labels)
+        labels_arr = _categorize(labels)
 
         logger.info(f"Created dataset with {n_fields} fields and {features_arr.shape[0]} samples")
         logger.info(labels)
