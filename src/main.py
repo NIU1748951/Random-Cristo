@@ -1,7 +1,9 @@
 from typing import Any
 
 import numpy as np
-import sklearn.datasets
+from sklearn.datasets import fetch_openml, load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 import RandomForest as model
 import utils 
@@ -17,11 +19,8 @@ def log_data(X, y):
         logger.info(f"Sample {i}:{d[0]} - {d[1]}")
 
 def main():
-    #iris: Any = sklearn.datasets.load_iris()
-    #X, y = iris.data, iris.target
-    sonar = model.Dataset.from_file("data/Sonar/sonar.all-data.csv")
-    X, y = sonar.features, sonar.labels
-    # log_data(X, y)
+    iris: Any = load_iris()
+    X, y = iris.data, iris.target
 
     ratio_train, ratio_test = 0.75, 0.25  
     # 70% train, 30% test
@@ -41,21 +40,20 @@ def main():
     X_test, y_test = X[idx_test], y[idx_test]
 
     # Hyperparameters
-    max_depth = 15
-    min_size_split = 3  # if less, do not split the node
-    ratio_samples = 0.8 # sampling with replacement
-    num_trees = 1000
+    max_depth = 10
+    min_size_split = 2  # if less, do not split the node
+    ratio_samples = 0.7 # sampling with replacement
+    num_trees = 300
     num_random_features = int(np.sqrt(num_features))
                         # number of features to consider at each node
                         # when looking for the best split
-    criterion = model.Strategy.ImpurityStrategyEntropy()
 
     rf = model.RandomForestClassifier(max_depth, min_size_split, ratio_samples,
-                                      num_trees, num_random_features, criterion,
+                                      num_trees, num_random_features, "gini",
                                       n_jobs=-1)
 
-    training_dataset = model.Dataset(X_train, y_train)
-    rf.fit(training_dataset)
+    rf.fit(X, y)
+
     ypred = rf.predict(X_test)
 
     num_samples_test = len(y_test)

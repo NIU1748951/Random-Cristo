@@ -2,6 +2,7 @@ from collections import Counter
 from multiprocessing import Pool
 import os
 
+import tqdm
 import numpy as np
 from numpy.typing import NDArray
 
@@ -189,7 +190,7 @@ class RandomForestClassifier:
     def _make_decision_trees_sequential(self, dataset: Dataset):
         logger.info("Creating decision trees in 'sequential' mode")
         self._trees = []
-        for i in range(self._num_trees):
+        for i in tqdm.tqdm(range(self._num_trees), desc="Creating decision trees", ascii=False, ncols=100):
             # bootstrap
             subset = dataset.random_sampling(self._ratio_samples, True)
             tree = self._make_node(subset, 1) # The root
@@ -223,10 +224,13 @@ class RandomForestClassifier:
     def _make_decision_trees_parallel(self, dataset: Dataset, n_workers: int):
         logger.info(f"Creating decision trees in 'parallel' mode with {n_workers} workers")
         tasks = [None] * self._num_trees
+        self._trees = []
 
         with Pool(processes=n_workers, initializer=self._initial_worker, initargs=(self, dataset)) as pool:
-            self._trees = pool.map(self._worker, tasks)
-
+            for tree in tqdm.tqdm(pool.imap(self._worker, tasks),
+                                  total=self._num_trees, 
+                                  desc="Creating decision trees"):
+                self._trees.append(tree)
 
         logger.info("Finished fitting process")
 
