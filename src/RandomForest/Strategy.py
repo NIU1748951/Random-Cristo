@@ -7,6 +7,8 @@ from utils.LoggerConfig import get_logger
 
 logger = get_logger(__name__)
 
+#NOTE: Our Docstrings follow the PEP257 standards 
+
 class ImpurityStrategy(ABC):
     """
     Abstract class that defines the common interface for all impurity strategies.
@@ -15,6 +17,15 @@ class ImpurityStrategy(ABC):
     measure of a given array of labels.
     """
     def proportionate(self, labels: NDArray):
+        """Calculate class proportions from label counts.
+        
+        Args:
+            labels: Array of class labels
+            
+        Returns:
+            List of class proportions
+        """
+
         if len(labels) == 0:
             return 0
         counter = Counter(labels)
@@ -23,11 +34,32 @@ class ImpurityStrategy(ABC):
 
     @abstractmethod
     def execute(self, labels: NDArray) -> float:
+        """Calculate impurity measure for given labels.
+        
+        Args:
+            labels: Array of class labels
+            
+        Returns:
+            Calculated impurity value
+            
+        Raises:
+            NotImplementedError: If not implemented by subclass
+        """
         pass
 
 class ImpurityStrategyGini(ImpurityStrategy):
+    """Gini impurity calculation strategy using Gini formula."""
     @override
     def execute(self, labels: NDArray) -> float:
+        """Compute Gini impurity for class label distribution.
+        
+        Args:
+            labels: Array of class labels
+            
+        Returns:
+            Gini impurity value between 0 (pure) and 1 (max impurity)
+        """
+
         proportions = self.proportionate(labels)
         if proportions == 0:
             return 0
@@ -38,8 +70,17 @@ class ImpurityStrategyGini(ImpurityStrategy):
         return "GINI"
 
 class ImpurityStrategyEntropy(ImpurityStrategy):
+    """Entropy impurity calculation strategy using entropy formula."""
     @override
     def execute(self, labels: NDArray) -> float:
+        """Compute information entropy for class label distribution.
+        
+        Args:
+            labels: Array of class labels
+            
+        Returns:
+            Entropy value in bits (base 2)
+        """
         proportions = self.proportionate(labels)
         if proportions == 0:
             return 0
@@ -50,9 +91,10 @@ class ImpurityStrategyEntropy(ImpurityStrategy):
         return "ENTROPY"
 
 class ImpurityStrategyUnknown(ImpurityStrategy):
-    """
-    This class represents an unimplemented impurity algorithm and should never be either created
-    or called manually. Use just for debugging purposes.
+    """Placeholder strategy for unknown/unimplemented impurity calculations.
+    
+    WARNING:
+        Should NEVER be instantiated directly. Used as fallback for debugging.
     """
     def __init__(self, name):
         logger.warning(f"Unknown Impurity algorithm '{name}' has been created!")

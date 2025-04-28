@@ -12,11 +12,34 @@ from utils.LoggerConfig import get_logger
 
 logger = get_logger(__name__)
 
+#NOTE: Our Docstrings follow the PEP257 standards 
+
 class RandomForestClassifier:
     def __init__(self, max_depth: int, min_size_split: int, ratio_samples: float,
                  num_trees: int, num_random_features: int, criterion: str | ImpurityStrategy = "gini", 
                  *, n_jobs: int | None = None):
         """
+        The main random forest classifier.
+    
+        Implements the random forest algorithm with support for:
+        - Two different impurity criteria (Gini, Entropy)
+        - Parallel tree construction
+        - Bootstrap sampling of data and features
+        - Customizable tree depth and splitting rules
+        
+        Args:
+            max_depth: Maximum allowed depth for individual decision trees
+            min_size_split: Minimum number of samples required to split a node
+            ratio_samples: Ratio of samples to use in bootstrap sampling
+            num_trees: Number of decision trees in the forest
+            num_random_features: Number of features to consider at each split
+            criterion: Impurity calculation strategy (string or ImpurityStrategy instance)
+            n_jobs: Number of parallel jobs for tree construction (-1 = use all cores)
+        
+        Attributes:
+            _trees (list): Collection of decision trees comprising the forest
+            _impurity_strat (ImpurityStrategy): Current impurity calculation strategy
+
         N_jobs follows same convention as scikit-learn:
             - n_jobs = None   -> Same behaviour as n_jobs = 1 (sequential)
             - n_jobs = 1      -> Sequential
@@ -48,6 +71,15 @@ class RandomForestClassifier:
 - Impurity measure algorithm: {self._impurity_strat}""")
 
     def set_impurity_strategy(self, strategy: ImpurityStrategy | str):
+        """Update of  the impurity calculation strategy used by the classifier.
+        
+        Args:
+            strategy: Either an ImpurityStrategy instance or a string identifier
+        
+        Raises:
+            Warning: If an unrecognized string identifier is provided
+        """
+
         if isinstance(strategy, ImpurityStrategy):
             self._impurity_strat = strategy
             logger.info(f"Impurity method changed to '{strategy}'")
@@ -61,6 +93,14 @@ class RandomForestClassifier:
 
     @staticmethod
     def _match_criterion(criterion: str) -> ImpurityStrategy | None:
+        """Mapping of a string identifier to a concrete ImpurityStrategy instance.
+        
+        Args:
+            criterion: Impurity criterion identifier ('gini' or 'entropy')
+        
+        Returns:
+            Corresponding ImpurityStrategy instance (None if unrecognized)
+        """
         match criterion:
             case "gini":
                 return ImpurityStrategyGini()
@@ -70,6 +110,17 @@ class RandomForestClassifier:
                 return None
 
     def predict(self, X: NDArray | Dataset):
+        """Prediction of class labels for input samples.
+        
+        Args:
+            X: Input data (Dataset instance)
+        
+        Returns:
+            NDArray: Predicted class labels for all samples
+            
+        Raises:
+            ValueError: If called before model training
+        """
         if isinstance(X, Dataset):
             features = X.features
         elif isinstance(X, np.ndarray):
@@ -94,6 +145,15 @@ class RandomForestClassifier:
         return predictions
 
     def fit(self, X: NDArray | Dataset, y: NDArray | None = None):
+        """Trains the random forest model on input data.
+        
+        Args:
+            X: Training data (Dataset instance)
+            y: Target labels 
+        
+        Raises:
+            ValueError: For invalid input arguments
+        """
         if isinstance(X, Dataset):
             features = X.features
             labels = X.labels
@@ -108,6 +168,13 @@ class RandomForestClassifier:
         self._make_decision_trees(dataset)
 
     def _make_decision_trees(self, dataset: Dataset):
+        """Decides the decision tree construction process.
+        
+        Selects between sequential and parallel execution based on n_jobs parameter, explained above.
+        
+        Args:
+            dataset: Complete training dataset
+        """
         if self._n_jobs == -1:
             num_workers = os.cpu_count()
         else:
@@ -164,6 +231,15 @@ class RandomForestClassifier:
         logger.info("Finished fitting process")
 
     def _make_node(self, dataset: Dataset, depth: int):
+        """Recursively constructs a decision tree node.
+        
+        Args:
+            dataset: Current subset of training data
+            depth: Current depth in the tree structure
+            
+        Returns:
+            Node: Leaf node if stopping conditions met, else returns an internal decision node
+        """
         if depth >= self._max_depth \
             or dataset.n_samples <= self._min_size_split\
             or len(np.unique(dataset.labels)) <= 1:
@@ -177,6 +253,26 @@ class RandomForestClassifier:
         return Leaf(int(dataset.most_freq_label))
 
     def _make_parent_or_leaf(self, dataset: Dataset, depth: int):
+        """Attempts to create a decision node (Parent), falls back to leaf if split is invalid.
+    
+        This is the core tree-building method that:
+        1.-Randomly selects features for splitting
+        2.-Finds the best feature/threshold combination
+        3.-Validates split viability
+        4.-Recursively builds child nodes or creates leaf
+        
+        Args:
+            dataset: Current data partition being processed
+            depth: Current depth in the tree hierarchy
+            
+        Returns:
+            Parent: If valid split found and children created
+            Leaf: If split produces empty partitions or other stopping conditions
+        
+        Note:
+            Even after finding a split, may still return leaf if child nodes
+            would contain zero samples (prevoves invalid trees)
+        """
         idx_features = np.random.choice(range(dataset.n_features), self._num_random_features, replace=True)
         best_feature_idx, best_threshold, _, best_split = self._best_split(idx_features, dataset)
 
@@ -192,6 +288,15 @@ class RandomForestClassifier:
             return node
 
     def _best_split(self, idx_features: NDArray, dataset: Dataset):
+        """Finds optimal feature split using the CART algorithm.
+        
+        Args:
+            idx_features: Candidate feature indices for splitting
+            dataset: Current data subset
+            
+        Returns:
+            A Tuple: (best_feature_index, best_threshold, min_cost, (left_split, right_split))
+        """
         best_feature_index, best_threshold, minimum_cost, best_split = \
             np.inf, np.inf, np.inf, (None, None)
 
@@ -209,6 +314,15 @@ class RandomForestClassifier:
         return best_feature_index, best_threshold, minimum_cost, best_split
 
     def _CART_cost(self, left_dataset: Dataset, right_dataset: Dataset) -> float:
+        """Calculates weighted impurity cost for a potential split.
+        
+        Args:
+            left_dataset: Left child data after split
+            right_dataset: Right child data after split
+            
+        Returns:
+            float: Weighted sum of child node impurities
+        """
         # Compute J(k, v) equation
         total_samples = left_dataset.n_samples + right_dataset.n_samples
 

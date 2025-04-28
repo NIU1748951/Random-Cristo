@@ -10,9 +10,21 @@ import utils
 
 logger = utils.get_logger(__name__)
 
+#NOTE: Our Docstrings follow the PEP257 standards 
+
 def _cast_features(col) -> np.ndarray:
-    """
-    Tries to cast each feature into an int or a float and if it cant it leaves it as a string
+    """Tries to cast feature column to optimal numerical type.
+    
+    Tries casting priorities: int > float > string
+    
+    Args:
+        col: Input column of feature values
+        
+    Returns:
+        np.ndarray: Array cast to most appropriate dtype
+        
+    Note:
+        Maintains string values if numerical casting fails
     """
     try:
         return np.array(col, dtype=int)
@@ -23,8 +35,13 @@ def _cast_features(col) -> np.ndarray:
             return np.array(col, dtype=str)
 
 def _categorize(labels):
-    """
-    Forces each label to be an integer representing its class
+    """Convert class labels to integer representations.
+    
+    Args:
+        labels: Iterable of class labels (strings or numbers)
+        
+    Returns:
+        np.ndarray: Integer-encoded labels
     """
     try:
         return np.array(labels, dtype=int)
@@ -41,12 +58,32 @@ def _categorize(labels):
 
 @dataclass(frozen=True)
 class Dataset:
+    """IMMUTABLE dataset container for machine learning tasks.
+    
+    Handles data loading, preprocessing, and common dataset operations.
+    
+    Attributes:
+        features: 2D array of input features (n_samples, n_features)
+        labels: 1D array of target labels (n_samples,)
+    """
     __slots__ = ["features", "labels"]
     features: NDArray[Any]
     labels: NDArray[Any]
     
     @classmethod
     def from_file(cls, filename: str, separator: str = ','):
+        """Create Dataset from CSV-like file.
+        
+        Args:
+            filename: Path to data file
+            separator: Column delimiter character
+            
+        Returns:
+            Dataset: Loaded and preprocessed dataset
+            
+        Raises:
+            ValueError: If file has inconsistent column counts
+        """
         features = []
         labels = []
         n_fields = None
@@ -93,8 +130,14 @@ class Dataset:
         return np.argmax(np.bincount(self.labels))
 
     def train_test_split(self, test_size: float = 0.25, shuffle: bool = True) -> Tuple["Dataset", "Dataset"]:
-        """
-        Separates the dataset in two: train, test
+        """Split dataset into training and testing subsets.
+        
+        Args:
+            test_size: Proportion of dataset to allocate for testing (0-1)
+            shuffle: Randomize sample order before splitting
+            
+        Returns:
+            Tuple[Dataset, Dataset]: (train_set, test_set)
         """
 
         assert 0 < test_size <= 1, "Variable 'test_size' must be a percentage"
@@ -111,6 +154,15 @@ class Dataset:
         return train, test
 
     def random_sampling(self, ratio: float, replace: bool = True) -> "Dataset":
+        """Create bootstrap sample from dataset.
+        
+        Args:
+            ratio: Proportion of samples to select (0-1)
+            replace: Allow duplicate samples (with replacement)
+            
+        Returns:
+            Dataset: Sampled subset
+        """
         assert 0.0 < ratio <= 1.0  # It's a percentage!
         size = floor(self.n_samples * ratio)
         assert size > 0.0
@@ -118,6 +170,17 @@ class Dataset:
         return Dataset(self.features[idx], self.labels[idx])
     
     def split(self, index_feature: int, threshold: float) -> Tuple["Dataset", "Dataset"]:
+        """Partition dataset based on feature threshold.
+        
+        Args:
+            index_feature: Feature column to split on
+            threshold: Value threshold for splitting
+            
+        Returns:
+            Tuple[Dataset, Dataset]: (left_split, right_split), in which:
+                left_split: Samples with feature <= threshold
+                right_split: Samples with feature > threshold
+        """
         idx_left = np.ndarray = self.features[:, index_feature] < threshold
         idx_right = np.ndarray = self.features[:, index_feature] >= threshold
         return Dataset(self.features[idx_left], self.labels[idx_left]), Dataset(self.features[idx_right], self.labels[idx_right])
