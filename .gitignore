@@ -176,3 +176,4 @@ cython_debug/
 # Testing crazy stuff
 crazy/
 .DS_Store
+*.csv

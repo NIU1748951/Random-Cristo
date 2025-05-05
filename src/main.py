@@ -19,8 +19,10 @@ def log_data(X, y):
         logger.info(f"Sample {i}:{d[0]} - {d[1]}")
 
 def main():
-    iris: Any = load_iris()
-    X, y = iris.data, iris.target
+    #iris: Any = load_iris()
+    # X, y = iris.data, iris.target
+    dataset = model.Dataset.from_file("data/Credit_card/creditcard_10K.csv") 
+    X, y = dataset.features, dataset.labels
 
     ratio_train, ratio_test = 0.75, 0.25  
     # 70% train, 30% test
@@ -41,7 +43,7 @@ def main():
 
     # Hyperparameters
     max_depth = 10
-    min_size_split = 2  # if less, do not split the node
+    min_size_split = 10  # if less, do not split the node
     ratio_samples = 0.7 # sampling with replacement
     num_trees = 300
     num_random_features = int(np.sqrt(num_features))
@@ -52,7 +54,7 @@ def main():
                                       num_trees, num_random_features, "gini",
                                       n_jobs=-1)
 
-    rf.fit(X, y)
+    rf.fit(X[:3000], y[:3000])
 
     ypred = rf.predict(X_test)
 
