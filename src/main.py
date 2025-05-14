@@ -1,7 +1,7 @@
 from typing import Any
 
 import numpy as np
-from sklearn.datasets import fetch_openml, load_iris
+from sklearn.datasets import fetch_openml, load_iris, load_wine
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
@@ -19,10 +19,10 @@ def log_data(X, y):
         logger.info(f"Sample {i}:{d[0]} - {d[1]}")
 
 def main():
-    #iris: Any = load_iris()
-    # X, y = iris.data, iris.target
-    dataset = model.Dataset.from_file("data/Credit_card/creditcard_10K.csv") 
-    X, y = dataset.features, dataset.labels
+    iris: Any = load_wine()
+    X, y = iris.data, iris.target
+    #dataset = model.Dataset.from_file("data/Credit_card/creditcard_10K.csv") 
+    #X, y = dataset.features, dataset.labels
 
     ratio_train, ratio_test = 0.75, 0.25  
     # 70% train, 30% test
@@ -51,7 +51,7 @@ def main():
                         # when looking for the best split
 
     rf = model.RandomForestClassifier(max_depth, min_size_split, ratio_samples,
-                                      num_trees, num_random_features, "gini",
+                                      num_trees, num_random_features, "sse",
                                       n_jobs=-1)
 
     rf.fit(X[:3000], y[:3000])

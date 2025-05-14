@@ -1,7 +1,10 @@
 from collections import Counter
 from multiprocessing import Pool
 import os
+from abc import ABC
+from typing import override, Any
 
+from numpy._core.multiarray import ITEM_IS_POINTER
 import tqdm
 import numpy as np
 from numpy.typing import NDArray
@@ -15,7 +18,7 @@ logger = get_logger(__name__)
 
 #NOTE: Our Docstrings follow the PEP257 standards 
 
-class RandomForestClassifier:
+class RandomForest(ABC):
     def __init__(self, max_depth: int, min_size_split: int, ratio_samples: float,
                  num_trees: int, num_random_features: int, criterion: str | ImpurityStrategy = "gini", 
                  *, n_jobs: int | None = None):
@@ -107,43 +110,17 @@ class RandomForestClassifier:
                 return ImpurityStrategyGini()
             case "entropy":
                 return ImpurityStrategyEntropy()
+            case "sse" | "sumsquarederrors" | "sum_squared_errors":
+                return ImpurityStrategySSE()
             case _:
                 return None
 
-    def predict(self, X: NDArray | Dataset):
-        """Prediction of class labels for input samples.
-        
-        Args:
-            X: Input data (Dataset instance)
-        
-        Returns:
-            NDArray: Predicted class labels for all samples
-            
-        Raises:
-            ValueError: If called before model training
-        """
-        if isinstance(X, Dataset):
-            features = X.features
-        elif isinstance(X, np.ndarray):
-            features = X
-        else:
-            raise ValueError("Invalid arguments for predicting")
-
-        if len(self._trees) == 0:
-            raise ValueError("Model must be trained before predicting!")
-
-        n_samples = features.shape[0]
-        predictions = np.empty(n_samples, dtype=object)
-        
-        for i in range(n_samples):
-            votes = []
-            for tree in self._trees:
-                votes.append(tree.predict(features[i]))
-            
-            most_common = Counter(votes).most_common(1)[0][0]
-            predictions[i] = most_common
-
-        return predictions
+    #TODO: Change the predictions to be as the transparenvy 'regression' says.
+    #      We should make predict as a defined method and leave a helper method
+    #      '_combine_predictions' as the one to override by child classes
+    @abstractmethod
+    def predict(self, X: NDArray | Dataset) -> Any:
+        pass
 
     def fit(self, X: NDArray | Dataset, y: NDArray | None = None):
         """Trains the random forest model on input data.
@@ -339,3 +316,54 @@ class RandomForestClassifier:
         
         return left_weight * left_gini + right_weight * right_gini
 
+class RandomForestClassifier(RandomForest):
+    def __init__(self, max_depth: int, min_size_split: int, ratio_samples: float, num_trees: int,
+                 num_random_features: int, criterion: str | ImpurityStrategy = "gini",
+                 *, n_jobs: int | None = None):
+        super().__init__(max_depth, min_size_split, ratio_samples, num_trees, num_random_features, criterion, n_jobs=n_jobs)
+
+    @override
+    def predict(self, X: NDArray | Dataset) -> NDArray:
+        """Prediction of class labels for input samples.
+        
+        Args:
+            X: Input data (Dataset instance)
+        
+        Returns:
+            NDArray: Predicted class labels for all samples
+            
+        Raises:
+            ValueError: If called before model training
+        """
+        if isinstance(X, Dataset):
+            features = X.features
+        elif isinstance(X, np.ndarray):
+            features = X
+        else:
+            raise ValueError("Invalid arguments for predicting")
+
+        if len(self._trees) == 0:
+            raise ValueError("Model must be trained before predicting!")
+
+        n_samples = features.shape[0]
+        predictions = np.empty(n_samples, dtype=object)
+        
+        for i in range(n_samples):
+            votes = []
+            for tree in self._trees:
+                votes.append(tree.predict(features[i]))
+            
+            most_common = Counter(votes).most_common(1)[0][0]
+            predictions[i] = most_common
+
+        return predictions
+
+class RandomForestRegressor(RandomForest):
+    def __init__(self, max_depth: int, min_size_split: int, ratio_samples: float, num_trees: int,
+                 num_random_features: int, criterion: str | ImpurityStrategy = "gini",
+                 *, n_jobs: int | None = None):
+        super().__init__(max_depth, min_size_split, ratio_samples, num_trees, num_random_features, criterion, n_jobs=n_jobs)
+
+    @override
+    def predict(self, X: NDArray | Dataset) -> Any:
+        raise NotImplementedError(":(")

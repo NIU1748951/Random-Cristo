@@ -2,12 +2,11 @@ from abc import ABC, abstractmethod
 from collections import Counter
 import math
 from typing import override
+import numpy as np
 from numpy.typing import NDArray
 from utils.LoggerConfig import get_logger
 
 logger = get_logger(__name__)
-
-#NOTE: Our Docstrings follow the PEP257 standards 
 
 class ImpurityStrategy(ABC):
     """
@@ -17,7 +16,8 @@ class ImpurityStrategy(ABC):
     measure of a given array of labels.
     """
     def proportionate(self, labels: NDArray):
-        """Calculate class proportions from label counts.
+        """
+        Calculate class proportions from label counts.
         
         Args:
             labels: Array of class labels
@@ -34,7 +34,8 @@ class ImpurityStrategy(ABC):
 
     @abstractmethod
     def execute(self, labels: NDArray) -> float:
-        """Calculate impurity measure for given labels.
+        """
+        Calculate impurity measure for given labels.
         
         Args:
             labels: Array of class labels
@@ -51,7 +52,8 @@ class ImpurityStrategyGini(ImpurityStrategy):
     """Gini impurity calculation strategy using Gini formula."""
     @override
     def execute(self, labels: NDArray) -> float:
-        """Compute Gini impurity for class label distribution.
+        """
+        Compute Gini impurity for class label distribution.
         
         Args:
             labels: Array of class labels
@@ -73,7 +75,8 @@ class ImpurityStrategyEntropy(ImpurityStrategy):
     """Entropy impurity calculation strategy using entropy formula."""
     @override
     def execute(self, labels: NDArray) -> float:
-        """Compute information entropy for class label distribution.
+        """
+        Compute information entropy for class label distribution.
         
         Args:
             labels: Array of class labels
@@ -90,8 +93,22 @@ class ImpurityStrategyEntropy(ImpurityStrategy):
     def __str__(self) -> str:
         return "ENTROPY"
 
+class ImpurityStrategySSE(ImpurityStrategy):
+    """Entropy impurity calculation strategy using Sum of Squared Errors (SSE) formula."""
+    @override
+    def execute(self, labels: NDArray) -> float:
+        if len(labels) == 0:
+            return 0
+
+        mu = labels.mean()
+        return np.mean((labels - mu) ** 2)
+
+    def __str__(self) -> str:
+        return "SSE"
+
 class ImpurityStrategyUnknown(ImpurityStrategy):
-    """Placeholder strategy for unknown/unimplemented impurity calculations.
+    """
+    Placeholder strategy for unknown/unimplemented impurity calculations.
     
     WARNING:
         Should NEVER be instantiated directly. Used as fallback for debugging.
@@ -101,6 +118,6 @@ class ImpurityStrategyUnknown(ImpurityStrategy):
         self.name = name
 
     @override
-    def execute(self, _):
+    def execute(self, labels: NDArray):
         logger.error(f"Impurity algorithm '{self.name}' is not implemented!")
         raise NotImplementedError("Unkown algorithm")
