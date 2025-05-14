@@ -51,7 +51,7 @@ def main():
                         # when looking for the best split
 
     rf = model.RandomForestClassifier(max_depth, min_size_split, ratio_samples,
-                                      num_trees, num_random_features, "sse",
+                                      num_trees, num_random_features, "sumsquarederrors",
                                       n_jobs=-1)
 
     rf.fit(X[:3000], y[:3000])

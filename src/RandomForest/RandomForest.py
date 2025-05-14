@@ -230,8 +230,9 @@ class RandomForest(ABC):
 
         return node
 
+    @abstractmethod
     def _make_leaf(self, dataset: Dataset):
-        return Leaf(int(dataset.most_freq_label))
+        pass
 
     def _make_parent_or_leaf(self, dataset: Dataset, depth: int):
         """Attempts to create a decision node (Parent), falls back to leaf if split is invalid.
@@ -357,6 +358,10 @@ class RandomForestClassifier(RandomForest):
             predictions[i] = most_common
 
         return predictions
+
+    @override
+    def _make_leaf(self, dataset: Dataset):
+        return Leaf(int(dataset.most_freq_label))
 
 class RandomForestRegressor(RandomForest):
     def __init__(self, max_depth: int, min_size_split: int, ratio_samples: float, num_trees: int,
