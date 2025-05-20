@@ -12,7 +12,7 @@ class Node(ABC):
     """
 
     @abstractmethod
-    def predict(self, features: NDArray):
+    def predict(self, features: NDArray) -> float:
         """Predict class label for a single sample's features.
         
         Args:
@@ -34,10 +34,10 @@ class Leaf(Node):
         label: Constant class label this leaf node returns
     """
     __slots__ = ["label"] 
-    label: int
+    label: float
 
     @override
-    def predict(self, _: NDArray):
+    def predict(self, features: NDArray):
         """Return the leaf's stored class label.
         
         Args:

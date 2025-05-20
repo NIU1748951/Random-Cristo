@@ -1,10 +1,8 @@
-from collections import Counter
 from multiprocessing import Pool
 import os
 from abc import ABC
 from typing import override, Any
 
-from numpy._core.multiarray import ITEM_IS_POINTER
 import tqdm
 import numpy as np
 from numpy.typing import NDArray
@@ -66,13 +64,6 @@ class RandomForest(ABC):
             logger.warning(f"Impurity algorithm '{criterion}' is unkown. Selecting default algorithm 'GINI'")
             self._impurity_strat = ImpurityStrategyGini()
 
-        logger.info(f"""Initializing RandomForestClassifier.
-- Maximum depth: {max_depth}
-- Minimum size split: {min_size_split}
-- Ratio samples: {ratio_samples}
-- Number of trees: {num_trees}
-- Number of random features: {num_random_features}
-- Impurity measure algorithm: {self._impurity_strat}""")
 
     def set_impurity_strategy(self, strategy: ImpurityStrategy | str):
         """Update of  the impurity calculation strategy used by the classifier.
@@ -115,11 +106,37 @@ class RandomForest(ABC):
             case _:
                 return None
 
-    #TODO: Change the predictions to be as the transparenvy 'regression' says.
-    #      We should make predict as a defined method and leave a helper method
-    #      '_combine_predictions' as the one to override by child classes
+    def predict(self, X: NDArray | Dataset) -> NDArray:
+        """
+        Predict results from a given dataset or features array
+
+        Args:
+            X: Input data(Dataset instance)
+
+        Returns:
+            NDArray: Predicted values for all samples
+
+        Raises:
+            ValueError if called before model fitting
+        """
+        if isinstance(X, Dataset):
+            features = X.features
+        elif isinstance(X, np.ndarray):
+            features = X
+        else:
+            raise ValueError("Invalid arguments for predicting")
+
+        if len(self._trees) == 0:
+            raise ValueError("Model must be trained before predicting!")
+
+        y_pred = []
+        for f in features:
+            predictions = [tree.predict(f) for tree in self._trees]
+            y_pred.append(self._combine_predictions(predictions))
+        return np.array(y_pred)
+
     @abstractmethod
-    def predict(self, X: NDArray | Dataset) -> Any:
+    def _combine_predictions(self, predictions):
         pass
 
     def fit(self, X: NDArray | Dataset, y: NDArray | None = None):
@@ -231,7 +248,7 @@ class RandomForest(ABC):
         return node
 
     @abstractmethod
-    def _make_leaf(self, dataset: Dataset):
+    def _make_leaf(self, dataset: Dataset) ->Leaf:
         pass
 
     def _make_parent_or_leaf(self, dataset: Dataset, depth: int):
@@ -322,42 +339,17 @@ class RandomForestClassifier(RandomForest):
                  num_random_features: int, criterion: str | ImpurityStrategy = "gini",
                  *, n_jobs: int | None = None):
         super().__init__(max_depth, min_size_split, ratio_samples, num_trees, num_random_features, criterion, n_jobs=n_jobs)
+        logger.info(f"""Initializing RandomForestClassifier.
+- Maximum depth: {max_depth}
+- Minimum size split: {min_size_split}
+- Ratio samples: {ratio_samples}
+- Number of trees: {num_trees}
+- Number of random features: {num_random_features}
+- Impurity measure algorithm: {self._impurity_strat}""")
 
     @override
-    def predict(self, X: NDArray | Dataset) -> NDArray:
-        """Prediction of class labels for input samples.
-        
-        Args:
-            X: Input data (Dataset instance)
-        
-        Returns:
-            NDArray: Predicted class labels for all samples
-            
-        Raises:
-            ValueError: If called before model training
-        """
-        if isinstance(X, Dataset):
-            features = X.features
-        elif isinstance(X, np.ndarray):
-            features = X
-        else:
-            raise ValueError("Invalid arguments for predicting")
-
-        if len(self._trees) == 0:
-            raise ValueError("Model must be trained before predicting!")
-
-        n_samples = features.shape[0]
-        predictions = np.empty(n_samples, dtype=object)
-        
-        for i in range(n_samples):
-            votes = []
-            for tree in self._trees:
-                votes.append(tree.predict(features[i]))
-            
-            most_common = Counter(votes).most_common(1)[0][0]
-            predictions[i] = most_common
-
-        return predictions
+    def _combine_predictions(self, predictions) -> Any:
+        return np.argmax(np.bincount(predictions))
 
     @override
     def _make_leaf(self, dataset: Dataset):
@@ -365,10 +357,21 @@ class RandomForestClassifier(RandomForest):
 
 class RandomForestRegressor(RandomForest):
     def __init__(self, max_depth: int, min_size_split: int, ratio_samples: float, num_trees: int,
-                 num_random_features: int, criterion: str | ImpurityStrategy = "gini",
+                 num_random_features: int, criterion: str | ImpurityStrategy = "sse",
                  *, n_jobs: int | None = None):
         super().__init__(max_depth, min_size_split, ratio_samples, num_trees, num_random_features, criterion, n_jobs=n_jobs)
+        logger.info(f"""Initializing RandomForestRegressor.
+- Maximum depth: {max_depth}
+- Minimum size split: {min_size_split}
+- Ratio samples: {ratio_samples}
+- Number of trees: {num_trees}
+- Number of random features: {num_random_features}
+- Impurity measure algorithm: {self._impurity_strat}""")
 
     @override
-    def predict(self, X: NDArray | Dataset) -> Any:
-        raise NotImplementedError(":(")
+    def _combine_predictions(self, predictions):
+        return np.mean(predictions)
+
+    @override
+    def _make_leaf(self, dataset: Dataset):
+        return Leaf(float(dataset.mean_value))

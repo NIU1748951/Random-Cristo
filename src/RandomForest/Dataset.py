@@ -129,6 +129,10 @@ class Dataset:
     def most_freq_label(self) -> np.intp:
         return np.argmax(np.bincount(self.labels))
 
+    @property
+    def mean_value(self):
+        return np.mean(self.labels)
+
     def train_test_split(self, test_size: float = 0.25, shuffle: bool = True) -> Tuple["Dataset", "Dataset"]:
         """Split dataset into training and testing subsets.
         
