@@ -88,7 +88,7 @@ def main():
     for idx, score in sorted(importances.items()):
         logger.info(f"Feature {idx}: {score:.4f}")
 
-    # Print a sample tree structure
+
     logger.info("Sample tree structure:")
     printer = TreePrinterVisitor()
     rf._trees[0].accept(printer)
