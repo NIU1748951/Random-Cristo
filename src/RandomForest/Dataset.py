@@ -56,7 +56,7 @@ def _categorize(labels):
         return labels_int
 
 
-@dataclass(frozen=True)
+@dataclass
 class Dataset:
     """IMMUTABLE dataset container for machine learning tasks.
     

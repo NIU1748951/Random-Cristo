@@ -333,6 +333,11 @@ class RandomForest(ABC):
         right_gini = self._impurity_strat.execute(right_dataset.labels)
         
         return left_weight * left_gini + right_weight * right_gini
+    
+    def apply_visitor(self, visitor):
+        """Apply a visitor to all trees in the forest."""
+        for tree in self._trees:
+            tree.accept(visitor)
 
 class RandomForestClassifier(RandomForest):
     def __init__(self, max_depth: int, min_size_split: int, ratio_samples: float, num_trees: int,

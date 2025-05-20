@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.datasets import fetch_openml, load_iris, load_wine
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from RandomForest.TreeVisitor import FeatureImportanceVisitor, TreePrinterVisitor
 
 import RandomForest as model
 import utils 
@@ -78,6 +79,19 @@ def main():
     rf.fit(X, y)
 
     y_pred = rf.predict(X_test)
+
+
+    fi_visitor = FeatureImportanceVisitor()
+    rf.apply_visitor(fi_visitor)
+    importances = fi_visitor.get_importances()
+    logger.info("Feature importances:")
+    for idx, score in sorted(importances.items()):
+        logger.info(f"Feature {idx}: {score:.4f}")
+
+    # Print a sample tree structure
+    logger.info("Sample tree structure:")
+    printer = TreePrinterVisitor()
+    rf._trees[0].accept(printer)
 
     #num_samples_test = len(y_test)
     #num_correct_predictions = np.sum(ypred == y_test)

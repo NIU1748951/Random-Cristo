@@ -26,6 +26,10 @@ class Node(ABC):
         """
         pass
 
+    def accept(self, visitor):
+        """Accept a visitor to traverse or operate on this node."""
+        visitor.visit(self)
+
 @dataclass
 class Leaf(Node):
     """Terminal node containing final class prediction.
@@ -47,6 +51,9 @@ class Leaf(Node):
             int: Pre-determined class label
         """
         return self.label
+    
+    def accept(self, visitor):
+        visitor.visit(self)
 
 @dataclass
 class Parent(Node):
@@ -81,3 +88,17 @@ class Parent(Node):
             return self.left_child.predict(features)
         else:
             return self.right_child.predict(features)
+        
+    def accept(self, visitor):
+        """Accept a visitor and recursively traverse this node and its children.
+
+        Implements the Visitor pattern by first invoking the visitor on this node,
+        then delegating to the left and right child nodes.
+
+        Args:
+            visitor: An object with a `visit(node)` method, which defines the
+                    operation to perform on each visited node.
+        """
+        visitor.visit(self)
+        self.left_child.accept(visitor)
+        self.right_child.accept(visitor)
